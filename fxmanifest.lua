@@ -1,7 +1,7 @@
 fx_version 'cerulean'
 game 'gta5'
 
-author 'YourName'
+author 'ShionRen'
 description 'Configurable gathering system for Qbox'
 version '1.1.0'
 
