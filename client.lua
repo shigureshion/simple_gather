@@ -28,38 +28,55 @@ end
 -- Blip作成
 local createdBlips = {}
 
-local gatheringProps = {}
+-- 採取開始前の近距離オブジェクトを記録
+local function snapshotNearbyObjects(ped, radius)
+    local snapshot = {}
+    local coords = GetEntityCoords(ped)
 
-local function getPlayerProps()
-    local props = {}
-    local ped = PlayerPedId()
-    local objects = GetGamePool('CObject')
+    for _, object in ipairs(GetGamePool('CObject')) do
+        if DoesEntityExist(object) then
+            local objectCoords = GetEntityCoords(object)
 
-    for _, object in ipairs(objects) do
-        if DoesEntityExist(object)
-            and IsEntityAttachedToEntity(object, ped) then
-            props[#props + 1] = object
+            if #(objectCoords - coords) <= radius then
+                snapshot[object] = true
+            end
         end
     end
 
-    return props
+    return snapshot
 end
 
-local function deleteNewGatheringProps(previousProps)
-    local previous = {}
-
-    for _, object in ipairs(previousProps) do
-        previous[object] = true
-    end
-
+-- 採取中に新しく生成された近距離オブジェクトを削除
+local function cleanupNewNearbyObjects(snapshot, radius)
     local ped = PlayerPedId()
 
+    -- 先にモーションを停止する
+    ClearPedTasks(ped)
+    ClearPedSecondaryTask(ped)
+
+    -- アタッチ解除やシナリオの終了処理を待つ
+    Wait(100)
+
+    local coords = GetEntityCoords(ped)
+
     for _, object in ipairs(GetGamePool('CObject')) do
-        if DoesEntityExist(object)
-            and IsEntityAttachedToEntity(object, ped)
-            and not previous[object] then
-            SetEntityAsMissionEntity(object, true, true)
-            DeleteEntity(object)
+        if DoesEntityExist(object) and not snapshot[object] then
+            local objectCoords = GetEntityCoords(object)
+
+            if #(objectCoords - coords) <= radius then
+                -- ネットワークオブジェクトは制御権がある場合のみ削除
+                if not NetworkGetEntityIsNetworked(object)
+                    or NetworkHasControlOfEntity(object) then
+
+                    SetEntityAsMissionEntity(object, true, true)
+
+                    if IsEntityAttachedToEntity(object, ped) then
+                        DetachEntity(object, true, true)
+                    end
+
+                    DeleteEntity(object)
+                end
+            end
         end
     end
 end
@@ -158,8 +175,8 @@ CreateThread(function()
 
                     local completed = false
 
-                    -- 採取開始前のpropを記録
-                    local previousProps = getPlayerProps()
+                    -- 採取開始前のオブジェクトを記録
+                    local propSnapshot = snapshotNearbyObjects(PlayerPedId(), 4.0)
 
                     -- プログレスバーとモーション
                     local success = lib.progressBar({
@@ -181,7 +198,8 @@ CreateThread(function()
                         }
                     })
 
-                    deleteNewGatheringProps(previousProps)
+                    -- 採取中に新しく生成されたpropを整理
+                    cleanupNewNearbyObjects(propSnapshot, 3.0)
 
                     -- キャンセル・完了どちらもサーバーに通知
                     if success and isInsideZone(zone) then
