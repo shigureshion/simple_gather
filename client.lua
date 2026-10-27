@@ -181,6 +181,8 @@ CreateThread(function()
                         }
                     })
 
+                    deleteNewGatheringProps(previousProps)
+
                     -- キャンセル・完了どちらもサーバーに通知
                     if success and isInsideZone(zone) then
                         TriggerServerEvent(
@@ -194,9 +196,6 @@ CreateThread(function()
                             zone.id
                         )
                     end
-
-                    -- 完了・キャンセルのどちらでも新規propを削除
-                    deleteNewGatheringProps(previousProps)
 
                     isGathering = false
                 end)
