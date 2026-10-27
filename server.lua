@@ -20,7 +20,7 @@ end
 local function isPlayerInZone(src, zone)
     local ped = GetPlayerPed(src)
 
-    if not ped or ped == 0 then
+    if not ped or ped == 0 or GetVehiclePedIsIn(ped, false) ~= 0 then
         return false
     end
 

@@ -154,7 +154,8 @@ CreateThread(function()
             showText(activeZone)
 
             if IsControlJustReleased(0, Config.InteractKey)
-                and not isGathering then
+                and not isGathering
+                and not IsPedInAnyVehicle(ped, false) then
 
                 isGathering = true
 
