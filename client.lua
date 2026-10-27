@@ -28,6 +28,42 @@ end
 -- Blip作成
 local createdBlips = {}
 
+local gatheringProps = {}
+
+local function getPlayerProps()
+    local props = {}
+    local ped = PlayerPedId()
+    local objects = GetGamePool('CObject')
+
+    for _, object in ipairs(objects) do
+        if DoesEntityExist(object)
+            and IsEntityAttachedToEntity(object, ped) then
+            props[#props + 1] = object
+        end
+    end
+
+    return props
+end
+
+local function deleteNewGatheringProps(previousProps)
+    local previous = {}
+
+    for _, object in ipairs(previousProps) do
+        previous[object] = true
+    end
+
+    local ped = PlayerPedId()
+
+    for _, object in ipairs(GetGamePool('CObject')) do
+        if DoesEntityExist(object)
+            and IsEntityAttachedToEntity(object, ped)
+            and not previous[object] then
+            SetEntityAsMissionEntity(object, true, true)
+            DeleteEntity(object)
+        end
+    end
+end
+
 CreateThread(function()
     if not Config.Blip.enabled then return end
 
@@ -122,6 +158,9 @@ CreateThread(function()
 
                     local completed = false
 
+                    -- 採取開始前のpropを記録
+                    local previousProps = getPlayerProps()
+
                     -- プログレスバーとモーション
                     local success = lib.progressBar({
                         duration = zone.duration
@@ -155,6 +194,9 @@ CreateThread(function()
                             zone.id
                         )
                     end
+
+                    -- 完了・キャンセルのどちらでも新規propを削除
+                    deleteNewGatheringProps(previousProps)
 
                     isGathering = false
                 end)
